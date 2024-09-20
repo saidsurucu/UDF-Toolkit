@@ -1,8 +1,11 @@
 import sys
 import os
 import zipfile
+import base64
 from docx import Document
 from docx.enum.text import WD_ALIGN_PARAGRAPH
+from docx.oxml import OxmlElement
+from docx.oxml.ns import qn
 
 def docx_to_udf(docx_file, udf_file):
     udf_template = '''<?xml version="1.0" encoding="UTF-8" ?>
@@ -32,6 +35,7 @@ def docx_to_udf(docx_file, udf_file):
         print("Error: Tables are not supported in the UDF conversion process.")
         return
 
+
     content = []
     elements = []
     current_offset = 0
@@ -42,33 +46,47 @@ def docx_to_udf(docx_file, udf_file):
         para_elements = []
 
         for run in paragraph.runs:
-            text = run.text
-            if text:
-                length = len(text)
-                style_attrs = []
+            # Check for images
+            drawings = run._element.findall('.//'+qn('w:drawing'))
+            if drawings:
+                for drawing in drawings:
+                    blip = drawing.find('.//'+qn('a:blip'))
+                    if blip is not None:
+                        rId = blip.get(qn('r:embed'))
+                        image_part = document.part.related_parts[rId]
+                        image_data = image_part.blob
+                        image_base64 = base64.b64encode(image_data).decode('utf-8')
+                        para_elements.append(f'<image family="Times New Roman" size="11" resolver="hvl-default" imageData="{image_base64}" startOffset="{current_offset}" length="1" />')
+                        para_text += " "  # Add a space for the image
+                        current_offset += 1
+            else:
+                text = run.text
+                if text:
+                    length = len(text)
+                    style_attrs = []
 
-                if run.bold:
-                    style_attrs.append('bold="true"')
-                if run.italic:
-                    style_attrs.append('italic="true"')
-                if run.underline:
-                    style_attrs.append('underline="true"')
-                if run.font.strike:
-                    style_attrs.append('strikethrough="true"')
-                if run.font.size:
-                    style_attrs.append(f'size="{int(run.font.size.pt)}"')
-                if run.font.name:
-                    style_attrs.append(f'family="{run.font.name}"')
-                if run.font.color and run.font.color.rgb:
-                    color = run.font.color.rgb
-                    style_attrs.append(f'foreground="#{color}"')
+                    if run.bold:
+                        style_attrs.append('bold="true"')
+                    if run.italic:
+                        style_attrs.append('italic="true"')
+                    if run.underline:
+                        style_attrs.append('underline="true"')
+                    if run.font.strike:
+                        style_attrs.append('strikethrough="true"')
+                    if run.font.size:
+                        style_attrs.append(f'size="{int(run.font.size.pt)}"')
+                    if run.font.name:
+                        style_attrs.append(f'family="{run.font.name}"')
+                    if run.font.color and run.font.color.rgb:
+                        color = run.font.color.rgb
+                        style_attrs.append(f'foreground="#{color}"')
 
-                style_attr_str = ' '.join(style_attrs)
-                para_elements.append(f'<content startOffset="{current_offset}" length="{length}" {style_attr_str} />')
-                para_text += text
-                current_offset += length
+                    style_attr_str = ' '.join(style_attrs)
+                    para_elements.append(f'<content startOffset="{current_offset}" length="{length}" {style_attr_str} />')
+                    para_text += text
+                    current_offset += length
 
-        if para_text:
+        if para_text or para_elements:
             alignment = paragraph.alignment
             if alignment == WD_ALIGN_PARAGRAPH.CENTER:
                 alignment_val = '1'
