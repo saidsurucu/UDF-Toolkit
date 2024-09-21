@@ -13,6 +13,6 @@ python udf_to_pdf.py input.udf
 python docx_to_udf.py input.docx
 ```
 ## TODO
-UDF'ye dönüştürme kodu tabloları, paragraf girintilerini ve resimleri işlemez.
+UDF'ye dönüştürme kodu tabloları ve paragraf girintilerini işlemez.
 ## Dokümantasyon
 [Docs.md](./Docs.md)
