@@ -32,6 +32,7 @@ def docx_to_udf(docx_file, udf_file):
     elements = []
     current_offset = 0
     EMPTY_PARAGRAPH_PLACEHOLDER = '\u200B'  # Zero-width space
+    TAB_CHARACTER = '\t'  # Tab character
 
     for paragraph in document.paragraphs:
         para_text = ""
@@ -62,29 +63,39 @@ def docx_to_udf(docx_file, udf_file):
             # Process text in the run
             text = run.text
             if text:
-                length = len(text)
-                style_attrs = []
+                # Get font properties
+                font_family = run.font.name or "Times New Roman"
+                font_size = str(run.font.size.pt if run.font.size else 10)
 
-                if run.bold:
-                    style_attrs.append('bold="true"')
-                if run.italic:
-                    style_attrs.append('italic="true"')
-                if run.font.size:
-                    # Convert to point size
-                    size = run.font.size.pt
-                    style_attrs.append(f'size="{size}"')
-                if run.font.name:
-                    style_attrs.append(f'family="{run.font.name}"')
-                if run.font.color and run.font.color.rgb:
-                    color = run.font.color.rgb
-                    style_attrs.append(f'foreground="#{color}"')
+                # Process tab characters
+                tab_split = text.split(TAB_CHARACTER)
+                for i, segment in enumerate(tab_split):
+                    if segment:
+                        length = len(segment)
+                        style_attrs = []
 
-                style_attr_str = ' '.join(style_attrs)
-                para_elements.append(
-                    f'<content startOffset="{current_offset}" length="{length}" {style_attr_str} />'
-                )
-                para_text += text
-                current_offset += length
+                        if run.bold:
+                            style_attrs.append('bold="true"')
+                        if run.italic:
+                            style_attrs.append('italic="true"')
+                        style_attrs.append(f'size="{font_size}"')
+                        style_attrs.append(f'family="{font_family}"')
+                        if run.font.color and run.font.color.rgb:
+                            color = run.font.color.rgb
+                            style_attrs.append(f'foreground="#{color}"')
+
+                        style_attr_str = ' '.join(style_attrs)
+                        para_elements.append(
+                            f'<content startOffset="{current_offset}" length="{length}" {style_attr_str} />'
+                        )
+                        para_text += segment
+                        current_offset += length
+
+                    # Add tab element if this is not the last segment
+                    if i < len(tab_split) - 1:
+                        para_elements.append(f'<tab family="{font_family}" size="{font_size}" startOffset="{current_offset}" length="1" />')
+                        para_text += TAB_CHARACTER
+                        current_offset += 1
 
         # If paragraph is empty, add placeholder
         if not para_text:
@@ -104,7 +115,13 @@ def docx_to_udf(docx_file, udf_file):
 
         left_indent = paragraph.paragraph_format.left_indent
         right_indent = paragraph.paragraph_format.right_indent
+        first_line_indent = paragraph.paragraph_format.first_line_indent
+        
         indent_attrs = f'LeftIndent="{left_indent.pt if left_indent else 0.0}" RightIndent="{right_indent.pt if right_indent else 0.0}"'
+        
+        # Add FirstLineIndent attribute
+        if first_line_indent:
+            indent_attrs += f' FirstLineIndent="{first_line_indent.pt}"'
 
         elements.append(
             f'<paragraph Alignment="{alignment_val}" {indent_attrs}>{"".join(para_elements)}</paragraph>'
