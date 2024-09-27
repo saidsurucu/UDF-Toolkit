@@ -16,7 +16,6 @@ python docx_to_udf.py input.docx
 ```
 python scanned_pdf_to_udf.py input.pdf
 ```
-## TODO
-Bazı formatting ayarları henüz desteklenmiyor.
+
 ## Dokümantasyon
 [Docs.md](./Docs.md)
