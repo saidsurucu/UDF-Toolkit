@@ -12,7 +12,11 @@ python udf_to_pdf.py input.udf
 ```
 python docx_to_udf.py input.docx
 ```
+## PDF dosyasını (imaj olarak) UDF formatına çevirmek için
+```
+python scanned_pdf_to_udf.py input.pdf
+```
 ## TODO
-UDF'ye dönüştürme kodu tabloları işlemez.
+Bazı formatting ayarları henüz desteklenmiyor.
 ## Dokümantasyon
 [Docs.md](./Docs.md)
