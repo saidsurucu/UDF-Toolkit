@@ -19,3 +19,5 @@ python scanned_pdf_to_udf.py input.pdf
 
 ## Dokümantasyon
 [Docs.md](./Docs.md)
+
+Not: En iyi sonucu almak için Windows'ta çalıştırılmalıdır. Bazı DOCX özelliklerini dönüştürmek için Windows kütüphaneleri gereklidir. MacOS ve Linux'ta sonuçlar farklı olabilir.
