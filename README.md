@@ -25,6 +25,8 @@ Bu scriptlerin düzgün çalışabilmesi için Python'un sisteminizde kurulu olm
 2. Sisteminizin işletim sistemine uygun Python sürümünü indirin (genellikle en son sürüm önerilir).
 3. Kurulum sırasında "Add Python to PATH" seçeneğini işaretleyin.
 
+## Kodu İndirmek
+Sağ üstteki yeşil renkli `Code` butonuna tıklayın. `Download ZIP`'e tıklayın. İnen sıkıştırılmış ZIP dosyasını bir klasöre çıkartın.
 
 ### 1. `install_requirements.bat`
 - **Amaç**: `requirements.txt` dosyasında listelenen gerekli Python paketlerini yükler.
