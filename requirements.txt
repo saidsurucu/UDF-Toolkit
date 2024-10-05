@@ -1,0 +1,3 @@
+python-docx
+PyMuPDF
+Pillow
