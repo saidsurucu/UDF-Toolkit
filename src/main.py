@@ -1,7 +1,7 @@
 import zipfile
 from docx import Document
-from paragraph_processor import process_paragraph
-from table_processor import process_table
+from .paragraph_processor import process_paragraph
+from .table_processor import process_table
 
 def main(docx_file, udf_file):
     udf_template = '''<?xml version="1.0" encoding="UTF-8" ?>

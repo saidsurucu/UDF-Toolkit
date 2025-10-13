@@ -1,6 +1,6 @@
 from docx.oxml.ns import qn
-from image_processor import process_image
-from utils import get_alignment, get_indent_attrs, get_bullet_attrs
+from .image_processor import process_image
+from .utils import get_alignment, get_indent_attrs, get_bullet_attrs
 
 def process_paragraph(paragraph, document, current_offset):
     EMPTY_PARAGRAPH_PLACEHOLDER = '\u200B'  # Zero-width space

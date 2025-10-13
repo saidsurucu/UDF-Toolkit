@@ -1,5 +1,5 @@
 from docx.oxml.ns import qn
-from paragraph_processor import process_paragraph
+from .paragraph_processor import process_paragraph
 
 def process_table(table, document, current_offset):
     table_text = ""

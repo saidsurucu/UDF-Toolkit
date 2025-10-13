@@ -9,7 +9,7 @@ IF "%~1"=="" (
 )
 
 REM Run the conversion
-python udf_to_pdf.py "%~1"
+python -m src.udf_to_pdf "%~1"
 
 REM Check if the conversion was successful
 IF %ERRORLEVEL% NEQ 0 (

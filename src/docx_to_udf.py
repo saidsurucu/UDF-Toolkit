@@ -1,6 +1,6 @@
 import sys
 import os
-from main import main
+from .main import main
 
 def docx_to_udf():
     if len(sys.argv) < 2:

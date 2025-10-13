@@ -9,7 +9,7 @@ IF "%~1"=="" (
 )
 
 REM Run the conversion
-python docx_to_udf.py "%~1"
+python -m src.docx_to_udf "%~1"
 
 REM Check if the conversion was successful
 IF %ERRORLEVEL% NEQ 0 (
