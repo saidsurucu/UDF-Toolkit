@@ -14,15 +14,73 @@ from reportlab.pdfbase import pdfmetrics
 from reportlab.pdfbase.ttfonts import TTFont
 from reportlab.lib.enums import TA_LEFT, TA_CENTER, TA_RIGHT, TA_JUSTIFY
 
-# Add fonts that support Turkish characters with bold and italic variations
-pdfmetrics.registerFont(TTFont('DejaVuSerif', 'DejaVuSerif.ttf'))
-pdfmetrics.registerFont(TTFont('DejaVuSerif-Bold', 'DejaVuSerif-Bold.ttf'))
-pdfmetrics.registerFont(TTFont('DejaVuSerif-Italic', 'DejaVuSerif-Italic.ttf'))
-pdfmetrics.registerFont(TTFont('DejaVuSerif-BoldItalic', 'DejaVuSerif-BoldItalic.ttf'))
+# Get the directory where this script is located
+SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 
-# Create font family
-pdfmetrics.registerFontFamily('DejaVuSerif', normal='DejaVuSerif', bold='DejaVuSerif-Bold',
-                             italic='DejaVuSerif-Italic', boldItalic='DejaVuSerif-BoldItalic')
+def find_font_file(filename):
+    """Find font file in various locations"""
+    # Try dejavu-serif subdirectory first (common organization)
+    dejavu_dir = os.path.join(SCRIPT_DIR, 'dejavu-serif')
+    dejavu_path = os.path.join(dejavu_dir, filename)
+    if os.path.exists(dejavu_path):
+        return dejavu_path
+    
+    # Try script directory
+    script_path = os.path.join(SCRIPT_DIR, filename)
+    if os.path.exists(script_path):
+        return script_path
+    
+    # Try fonts subdirectory
+    fonts_dir = os.path.join(SCRIPT_DIR, 'fonts')
+    fonts_path = os.path.join(fonts_dir, filename)
+    if os.path.exists(fonts_path):
+        return fonts_path
+    
+    # Fallback to current directory
+    if os.path.exists(filename):
+        return filename
+    return None
+
+# Add fonts that support Turkish characters with bold and italic variations
+# Try to find fonts in script directory first, then current directory
+dejavu_normal = find_font_file('DejaVuSerif.ttf')
+dejavu_bold = find_font_file('DejaVuSerif-Bold.ttf')
+dejavu_italic = find_font_file('DejaVuSerif-Italic.ttf')
+dejavu_bolditalic = find_font_file('DejaVuSerif-BoldItalic.ttf')
+
+if not dejavu_normal:
+    print("ERROR: DejaVuSerif.ttf not found!")
+    print(f"Please place the font files in one of these locations:")
+    print(f"  - {os.path.join(SCRIPT_DIR, 'dejavu-serif')}")
+    print(f"  - {SCRIPT_DIR}")
+    print(f"  - {os.path.join(SCRIPT_DIR, 'fonts')}")
+    print("  - Current working directory")
+    print("\nRequired files:")
+    print("  - DejaVuSerif.ttf")
+    print("  - DejaVuSerif-Bold.ttf")
+    print("  - DejaVuSerif-Italic.ttf")
+    print("  - DejaVuSerif-BoldItalic.ttf")
+    print("\nDownload from: https://dejavu-fonts.github.io/")
+    sys.exit(1)
+
+try:
+    pdfmetrics.registerFont(TTFont('DejaVuSerif', dejavu_normal))
+    if dejavu_bold:
+        pdfmetrics.registerFont(TTFont('DejaVuSerif-Bold', dejavu_bold))
+    if dejavu_italic:
+        pdfmetrics.registerFont(TTFont('DejaVuSerif-Italic', dejavu_italic))
+    if dejavu_bolditalic:
+        pdfmetrics.registerFont(TTFont('DejaVuSerif-BoldItalic', dejavu_bolditalic))
+    
+    # Create font family
+    pdfmetrics.registerFontFamily('DejaVuSerif', 
+                                 normal='DejaVuSerif', 
+                                 bold='DejaVuSerif-Bold' if dejavu_bold else 'DejaVuSerif',
+                                 italic='DejaVuSerif-Italic' if dejavu_italic else 'DejaVuSerif',
+                                 boldItalic='DejaVuSerif-BoldItalic' if dejavu_bolditalic else 'DejaVuSerif')
+except Exception as e:
+    print(f"ERROR: Failed to load DejaVuSerif fonts: {e}")
+    sys.exit(1)
 
 def is_zip_file(file_path):
     """Check if the file is a valid ZIP file"""
@@ -218,6 +276,16 @@ def udf_to_pdf(udf_file, pdf_file):
             length = int(content_elem.get('length', '0'))
             text_content = content_text[start_offset:start_offset+length]
             
+            # XML Escape the content first
+            text_content = text_content.replace('&', '&amp;').replace('<', '&lt;').replace('>', '&gt;')
+            
+            # Replace tabs with non-breaking spaces (approx 4 spaces per tab)
+            text_content = text_content.replace('\t', '&nbsp;&nbsp;&nbsp;&nbsp;')
+            
+            # Preserve newlines in the content (convert \n to <br/> for ReportLab)
+            if '\n' in text_content:
+                text_content = text_content.replace('\n', '<br/>')
+            
             # Get formatting attributes
             bold = content_elem.get('bold', 'false') == 'true'
             italic = content_elem.get('italic', 'false') == 'true'
@@ -264,7 +332,20 @@ def udf_to_pdf(udf_file, pdf_file):
             left_indent = float(para_elem.get('LeftIndent', '0'))
             right_indent = float(para_elem.get('RightIndent', '0'))
             first_line_indent = float(para_elem.get('FirstLineIndent', '0'))
-            line_spacing = float(para_elem.get('LineSpacing', '1.2'))
+            
+            # Handle Line Spacing
+            # UDF might contain '0' or small values. Enforce a minimum to prevent collapsing.
+            raw_line_spacing = para_elem.get('LineSpacing')
+            if raw_line_spacing:
+                try:
+                    line_spacing = float(raw_line_spacing)
+                    if line_spacing < 1.0:
+                         # Assume 0 or small values mean default/single spacing
+                        line_spacing = 1.2 
+                except ValueError:
+                    line_spacing = 1.2
+            else:
+                line_spacing = 1.2
             
             # Get paragraph font family - always use DejaVuSerif regardless of what's in the XML
             family = 'DejaVuSerif'
@@ -285,18 +366,39 @@ def udf_to_pdf(udf_file, pdf_file):
             
             # Process the paragraph content
             paragraph_text = ''
+            last_end_offset = None
+            
             for child in para_elem:
+                # Get current element's offset info
+                current_start = int(child.get('startOffset')) if child.get('startOffset') else None
+                current_length = int(child.get('length', '0')) if child.get('length') else 0
+                
+                # Check for gap between previous element and this one
+                if last_end_offset is not None and current_start is not None:
+                    if current_start > last_end_offset:
+                        gap_text = content_buffer[last_end_offset:current_start]
+                        # XML Escape the gap text
+                        gap_text = gap_text.replace('&', '&amp;').replace('<', '&lt;').replace('>', '&gt;')
+                        # Replace tabs
+                        gap_text = gap_text.replace('\t', '&nbsp;&nbsp;&nbsp;&nbsp;')
+                        # Add the gap text, converting newlines to <br/>
+                        paragraph_text += gap_text.replace('\n', '<br/>')
+                
                 if child.tag == 'content':
-                    paragraph_text += process_text_block(child, para_style)
+                    content_text_block = process_text_block(child, para_style)
+                    paragraph_text += content_text_block
+                    
+                    # Update offset tracking
+                    if current_start is not None:
+                        last_end_offset = current_start + current_length
+                        
                 elif child.tag == 'field':
                     # Process field element (labels like DAVACI, VEKİLİ, etc.)
                     field_name = child.get('fieldName', '')
                     
                     # Get the text from the content buffer if startOffset and length are provided
-                    if child.get('startOffset') and child.get('length'):
-                        start_offset = int(child.get('startOffset', '0'))
-                        length = int(child.get('length', '0'))
-                        field_text = content_buffer[start_offset:start_offset+length]
+                    if current_start is not None and current_length > 0:
+                        field_text = content_buffer[current_start:current_start+current_length]
                     else:
                         # Use the fieldName as fallback
                         field_text = field_name
@@ -323,8 +425,19 @@ def udf_to_pdf(udf_file, pdf_file):
                         paragraph_text += f"<u>{field_text}</u>"
                     else:
                         paragraph_text += field_text
+                    
+                    # Update offset tracking
+                    if current_start is not None:
+                        last_end_offset = current_start + current_length
+                        
                 elif child.tag == 'space':
                     paragraph_text += ' '
+                    # space usually doesn't have offset or it's handled by gap? 
+                    # If we have explicit space tag, we add space.
+                    # If gap covers it, we might double space? 
+                    # Usually offsets in UDF cover the content, spaces are gaps OR space tags.
+                    # If space tag is used, likely offsets are NOT covering it.
+                
                 elif child.tag == 'image':
                     # Add the image
                     image_data = child.get('imageData')
@@ -345,6 +458,13 @@ def udf_to_pdf(udf_file, pdf_file):
                             
                             # For images in paragraphs, we'll handle them specially
                             if not in_header_footer:
+                                # IMPORTANT: This returns early, splitting the paragraph. 
+                                # Ideally we should try to embed image in flow, but ReportLab Paragraph 
+                                # doesn't easily support inline images in this way without strictly definition.
+                                # For now, we return (current_text, image). 
+                                # This means subsequent text in this paragraph tag is ignored/lost.
+                                # This is a known limitation/bug but keeping behavior consistent for now
+                                # except fixing the return signature handling in loop?
                                 return Paragraph(paragraph_text, para_style), img
                         except Exception as e:
                             print(f"Error processing image: {e}")
@@ -456,7 +576,9 @@ def udf_to_pdf(udf_file, pdf_file):
                 pdf_elements.append(para)
                 if img:
                     pdf_elements.append(img)
-                pdf_elements.append(Spacer(1, 5))
+                # Add spacing after paragraph to prevent overlapping
+                # Use larger spacing to ensure proper separation
+                pdf_elements.append(Spacer(1, 12))
             elif elem.tag == 'page-break':
                 pdf_elements.append(PageBreak())
             elif elem.tag == 'table':

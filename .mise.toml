@@ -1,0 +1,8 @@
+[tools]
+python = "3.9.9"
+
+[env]
+PYTHONDONTWRITEBYTECODE = "1"
+
+[tasks.install]
+run = "pip install -r requirements.txt"
