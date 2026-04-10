@@ -158,15 +158,27 @@ cython_debug/
 #  and can be added to the global gitignore or merged into this file.  For a more nuclear
 #  option (not recommended) you can uncomment the following to ignore the entire idea folder.
 #.idea/
-~$test.docx
+# macOS
 .DS_Store
-.python-version
-hello.py
-pdf-test.pdf
-pyproject.toml
+
+# Editor temp files
+~$*.docx
+
+# Project-specific ignores
 *.udf
-*.lock
 *.pdf
 *.xml
 *.png
 *.docx
+*.md
+!README.md
+!Docs.md
+
+# Claude Code
+CLAUDE.md
+
+# Test/temp files
+hello.py
+pdf-test.pdf
+bg_img_temp.png
+ek/

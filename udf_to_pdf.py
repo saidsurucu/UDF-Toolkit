@@ -14,11 +14,29 @@ from reportlab.pdfbase import pdfmetrics
 from reportlab.pdfbase.ttfonts import TTFont
 from reportlab.lib.enums import TA_LEFT, TA_CENTER, TA_RIGHT, TA_JUSTIFY
 
+# Resolve font paths relative to this script's directory
+_SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
+_FONT_DIR = os.path.join(_SCRIPT_DIR, 'fonts')
+
+def _find_font(filename):
+    """Find a font file in fonts/ dir, script dir, or system paths."""
+    candidates = [
+        os.path.join(_FONT_DIR, filename),
+        os.path.join(_SCRIPT_DIR, filename),
+    ]
+    for path in candidates:
+        if os.path.isfile(path):
+            return path
+    raise FileNotFoundError(
+        f"Font '{filename}' bulunamadi. Lutfen 'fonts/' klasorune kopyalayin. "
+        f"Aranan yerler: {candidates}"
+    )
+
 # Add fonts that support Turkish characters with bold and italic variations
-pdfmetrics.registerFont(TTFont('DejaVuSerif', 'DejaVuSerif.ttf'))
-pdfmetrics.registerFont(TTFont('DejaVuSerif-Bold', 'DejaVuSerif-Bold.ttf'))
-pdfmetrics.registerFont(TTFont('DejaVuSerif-Italic', 'DejaVuSerif-Italic.ttf'))
-pdfmetrics.registerFont(TTFont('DejaVuSerif-BoldItalic', 'DejaVuSerif-BoldItalic.ttf'))
+pdfmetrics.registerFont(TTFont('DejaVuSerif', _find_font('DejaVuSerif.ttf')))
+pdfmetrics.registerFont(TTFont('DejaVuSerif-Bold', _find_font('DejaVuSerif-Bold.ttf')))
+pdfmetrics.registerFont(TTFont('DejaVuSerif-Italic', _find_font('DejaVuSerif-Italic.ttf')))
+pdfmetrics.registerFont(TTFont('DejaVuSerif-BoldItalic', _find_font('DejaVuSerif-BoldItalic.ttf')))
 
 # Create font family
 pdfmetrics.registerFontFamily('DejaVuSerif', normal='DejaVuSerif', bold='DejaVuSerif-Bold',
