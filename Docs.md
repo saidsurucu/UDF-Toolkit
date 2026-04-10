@@ -11,6 +11,7 @@
     * [Özellikler Bölümü (`<properties>`)](#özellikler-bölümü-properties)
     * [Elemanlar Bölümü (`<elements>`)](#elemanlar-bölümü-elements)
     * [Stiller Bölümü (`<styles>`)](#stiller-bölümü-styles)
+    * [Veri Bölümü (`<data>`) (Varsayımsal)](#veri-bölümü-data-varsayımsal)
 6.  [Detaylı Eleman Açıklamaları](#detaylı-eleman-açıklamaları)
     * [Üstbilgi (`<header>`)](#üstbilgi-header)
     * [Altbilgi (`<footer>`)](#altbilgi-footer)
@@ -21,7 +22,9 @@
     * [Tablo (`<table>`)](#tablo-table)
     * [Satır (`<row>`)](#satır-row)
     * [Hücre (`<cell>`)](#hücre-cell)
+    * [Boşluk (`<space>`)](#boşluk-space)
     * [Sayfa Sonu (`<page-break>`)](#sayfa-sonu-page-break)
+    * [Alan (`<field>`) (Varsayımsal)](#alan-field-varsayımsal)
 7.  [Renk Kodlama Sistemi](#renk-kodlama-sistemi)
 8.  [Özel Karakterler](#özel-karakterler)
 
@@ -57,12 +60,13 @@ Bir UDF dosyasını düzenlemek için:
 
 ## Ana Bölümler
 
-`<template>` elemanı sırasıyla şu dört bölümü içerir:
+`<template>` elemanı genellikle dört ana bölüm içerir. UYAP sisteminin şablonlama yeteneklerine bağlı olarak bir `<data>` bölümü de bulunabilir:
 
 1. `<content>` — Ham metin havuzu
 2. `<properties>` — Sayfa özellikleri
 3. `<elements>` — Belge yapısı ve biçimlendirme
 4. `<styles>` — Stil tanımları
+5. `<data>` (Varsayımsal) — Şablon belgelerde, alanları doldurmak için kullanılacak verileri içerebilir
 
 ### İçerik Bölümü (`<content>`)
 
@@ -158,6 +162,22 @@ Sayfa düzenini tanımlar. Tüm değerler **punto** cinsindendir.
          FONT_ATTRIBUTE_KEY="javax.swing.plaf.FontUIResource[...]" />
   <style name="hvl-default" family="Times New Roman" size="12" description="Gövde" />
 </styles>
+```
+
+### Veri Bölümü (`<data>`) (Varsayımsal)
+
+Eğer UDF dosyası bir şablon olarak kullanılıyorsa, `<elements>` bölümündeki `<field>` elemanlarını doldurmak için bir `<data>` bölümü bulunabilir. Bu bölümün yapısı genellikle UYAP sistemine özgüdür ve XML veya başka bir formatta olabilir.
+
+Örnek (tamamen varsayımsal):
+
+```xml
+<data>
+  <record>
+    <adi>Ahmet</adi>
+    <soyadi>Yılmaz</soyadi>
+    <davaNo>2023/123</davaNo>
+  </record>
+</data>
 ```
 
 ## Detaylı Eleman Açıklamaları
@@ -434,6 +454,18 @@ Hücreler paragraflar ve iç içe tablolar içerebilir:
 
 **Varsayılan hücre dolgusu:** Sol 5.4 pt, sağ 5.4 pt
 
+### Boşluk (`<space>`)
+
+`<space>` elemanı, `<content>` elemanları arasında ek bir boşluk karakteri eklemek için kullanılır. `startOffset` ve `length` (genellikle 1) öznitelikleriyle ana CDATA bloğundaki bir boşluğu referans alabilir.
+
+```xml
+<paragraph>
+  <content startOffset="327" length="4" />
+  <space startOffset="331" length="1" />
+  <content startOffset="332" length="4" />
+</paragraph>
+```
+
 ### Sayfa Sonu (`<page-break>`)
 
 ```xml
@@ -443,6 +475,24 @@ Hücreler paragraflar ve iç içe tablolar içerebilir:
   </paragraph>
 </page-break>
 ```
+
+### Alan (`<field>`) (Varsayımsal)
+
+Eğer UDF şablonlama için kullanılıyorsa, `<elements>` içinde `<field>` adında özel bir eleman bulunabilir. Bu eleman, `<data>` bölümünden veya harici bir kaynaktan gelen veriyle doldurulacak yer tutucuları temsil eder:
+
+- `name` (veya `fieldName`): Alanın benzersiz adı
+- `type` (veya `fieldType`): Alanın veri türü (örn: "text", "date", "image")
+- `default`: Veri bulunamazsa gösterilecek varsayılan değer
+- Formatlama öznitelikleri (font, size, color vb.)
+
+```xml
+<paragraph>
+  <content startOffset="350" length="10" />
+  <field name="MusteriAdi" type="text" startOffset="360" length="0" style="AlanStili" />
+</paragraph>
+```
+
+**Not:** `<field>` elemanının varlığı ve yapısı UYAP sisteminin özel uygulamasına bağlıdır. Bu tür alanlar `<content>` elemanlarına eklenmiş özel özniteliklerle (`fieldName`, `fieldType`, `fieldEditable` vb.) de temsil edilebilir.
 
 ## Renk Kodlama Sistemi
 
