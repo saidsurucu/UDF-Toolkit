@@ -10,6 +10,7 @@ from reportlab.lib.units import mm, inch
 import base64
 import io
 import zipfile
+from xml.sax.saxutils import escape
 from reportlab.pdfbase import pdfmetrics
 from reportlab.pdfbase.ttfonts import TTFont
 from reportlab.lib.enums import TA_LEFT, TA_CENTER, TA_RIGHT, TA_JUSTIFY
@@ -80,6 +81,26 @@ def convert_color(color_value):
         return colors.Color(r/255, g/255, b/255)
     except (ValueError, TypeError):
         return None
+
+def normalize_line_spacing(line_spacing_value, default=1.2):
+    """Convert UDF LineSpacing to a safe ReportLab leading multiplier."""
+    try:
+        line_spacing = float(line_spacing_value)
+    except (ValueError, TypeError):
+        return default
+
+    if line_spacing <= 0:
+        return default
+
+    # UDF commonly stores extra line spacing, e.g. 0.15 means 1.15x.
+    if line_spacing < 1:
+        return 1 + line_spacing
+
+    return line_spacing
+
+def escape_paragraph_text(text):
+    """Escape text for ReportLab Paragraph while preserving basic whitespace."""
+    return escape(text or "").replace("\t", "&nbsp;&nbsp;&nbsp;&nbsp;")
 
 def process_background_image(bg_image_data, bg_image_source, output_file):
     """Process background image data and return Image object"""
@@ -254,7 +275,7 @@ def udf_to_pdf(udf_file, pdf_file):
                 current_style.textColor = foreground
             
             # Apply emphasis formatting
-            formatted_text = text_content
+            formatted_text = escape_paragraph_text(text_content)
             if bold and italic and underline:
                 formatted_text = f"<u><b><i>{formatted_text}</i></b></u>"
             elif bold and italic:
@@ -282,7 +303,9 @@ def udf_to_pdf(udf_file, pdf_file):
             left_indent = float(para_elem.get('LeftIndent', '0'))
             right_indent = float(para_elem.get('RightIndent', '0'))
             first_line_indent = float(para_elem.get('FirstLineIndent', '0'))
-            line_spacing = float(para_elem.get('LineSpacing', '1.2'))
+            line_spacing = normalize_line_spacing(para_elem.get('LineSpacing'))
+            space_before = float(para_elem.get('SpaceAbove', '0') or 0)
+            space_after = float(para_elem.get('SpaceBelow', '0') or 0)
             
             # Get paragraph font family - always use DejaVuSerif regardless of what's in the XML
             family = 'DejaVuSerif'
@@ -298,7 +321,9 @@ def udf_to_pdf(udf_file, pdf_file):
                 firstLineIndent=first_line_indent,
                 fontName=family,
                 fontSize=size,
-                leading=size * line_spacing  # Leading is the line spacing
+                leading=size * line_spacing,  # Leading is the line spacing
+                spaceBefore=space_before,
+                spaceAfter=space_after
             )
             
             # Process the paragraph content
@@ -314,10 +339,10 @@ def udf_to_pdf(udf_file, pdf_file):
                     if child.get('startOffset') and child.get('length'):
                         start_offset = int(child.get('startOffset', '0'))
                         length = int(child.get('length', '0'))
-                        field_text = content_buffer[start_offset:start_offset+length]
+                        field_text = escape_paragraph_text(content_buffer[start_offset:start_offset+length])
                     else:
                         # Use the fieldName as fallback
-                        field_text = field_name
+                        field_text = escape_paragraph_text(field_name)
                     
                     # Apply styling 
                     bold = child.get('bold', 'false') == 'true'
@@ -343,6 +368,13 @@ def udf_to_pdf(udf_file, pdf_file):
                         paragraph_text += field_text
                 elif child.tag == 'space':
                     paragraph_text += ' '
+                elif child.tag == 'tab':
+                    if child.get('startOffset') and child.get('length'):
+                        start_offset = int(child.get('startOffset', '0'))
+                        length = int(child.get('length', '0'))
+                        paragraph_text += escape_paragraph_text(content_buffer[start_offset:start_offset+length])
+                    else:
+                        paragraph_text += "&nbsp;&nbsp;&nbsp;&nbsp;"
                 elif child.tag == 'image':
                     # Add the image
                     image_data = child.get('imageData')
